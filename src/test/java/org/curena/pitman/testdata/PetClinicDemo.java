@@ -229,9 +229,9 @@ public class PetClinicDemo {
 
         if (PetClinicIndexSetup.OWNERS_INDEX.equals(indexName)) {
           System.out.println(
-              "  - Owner: " + source.get("first_name") + " " + source.get("last_name"));
+              "  - Owner: " + Objects.requireNonNull(source).get("first_name") + " " + source.get("last_name"));
         } else if (PetClinicIndexSetup.PETS_INDEX.equals(indexName)) {
-          System.out.println("  - Pet: " + source.get("name") + " (" + source.get("species") + ")");
+          System.out.println("  - Pet: " + Objects.requireNonNull(source).get("name") + " (" + source.get("species") + ")");
         }
       }
 
