@@ -145,16 +145,26 @@ public class PetClinicIndexSetup {
     }
   }
 
-  public void deleteAllIndices() throws IOException {
+  public void deleteAllIndices() {
+    if (client == null) {
+      return;
+    }
     deleteIndexIfExists(OWNERS_INDEX);
     deleteIndexIfExists(PETS_INDEX);
     deleteIndexIfExists(APPOINTMENTS_INDEX);
   }
 
-  private void deleteIndexIfExists(String indexName) throws IOException {
-    BooleanResponse exists = client.indices().exists(ExistsRequest.of(e -> e.index(indexName)));
-    if (exists.value()) {
-      client.indices().delete(DeleteIndexRequest.of(d -> d.index(indexName)));
+  private void deleteIndexIfExists(String indexName) {
+    try {
+      if (client == null) {
+        return;
+      }
+      BooleanResponse exists = client.indices().exists(ExistsRequest.of(e -> e.index(indexName)));
+      if (exists.value()) {
+        client.indices().delete(DeleteIndexRequest.of(d -> d.index(indexName)));
+      }
+    } catch (Exception e) {
+      System.err.println("Error deleting index " + indexName + ": " + e.getMessage());
     }
   }
 

@@ -3,6 +3,7 @@ package org.curena.pitman.testdata;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.hc.core5.http.HttpHost;
 import org.opensearch.client.opensearch.OpenSearchClient;
@@ -24,7 +25,6 @@ public class PetClinicDemo {
       runDemo();
     } catch (Exception e) {
       System.err.println("Demo failed: " + e.getMessage());
-      e.printStackTrace();
     }
   }
 
@@ -37,8 +37,8 @@ public class PetClinicDemo {
     var transport =
         ApacheHttpClient5TransportBuilder.builder(HttpHost.create(OPENSEARCH_URL)).build();
 
-    OpenSearchClient client = new OpenSearchClient(transport);
-    try {
+    try (transport) {
+      OpenSearchClient client = new OpenSearchClient(transport);
 
       PetClinicIndexSetup indexSetup = new PetClinicIndexSetup(client);
 
@@ -55,9 +55,6 @@ public class PetClinicDemo {
       System.out.println("Cleaning up indices...");
       indexSetup.deleteAllIndices();
       System.out.println("Demo completed successfully!");
-
-    } finally {
-      transport.close();
     }
   }
 
@@ -70,6 +67,7 @@ public class PetClinicDemo {
 
     CreatePitResponse pitResponse = client.createPit(pitRequest);
     String pitId = pitResponse.pitId();
+    assert pitId != null;
     System.out.println("Created PIT with ID: " + pitId.substring(0, 20) + "...");
 
     try {
@@ -80,13 +78,16 @@ public class PetClinicDemo {
                       .query(q -> q.term(t -> t.field("species").value(FieldValue.of("Dog"))))
                       .size(5));
 
-      SearchResponse<Map> searchResponse = client.search(searchRequest, Map.class);
+      SearchResponse<Pet> searchResponse = client.search(searchRequest, Pet.class);
 
+      assert searchResponse.hits().total() != null;
       System.out.println("Found " + searchResponse.hits().total().value() + " dogs:");
-      for (Hit<Map> hit : searchResponse.hits().hits()) {
-        @SuppressWarnings("unchecked")
-        Map<String, Object> source = (Map<String, Object>) hit.source();
-        System.out.println("  - " + source.get("name") + " (" + source.get("breed") + ")");
+      for (Hit<Pet> hit : searchResponse.hits().hits()) {
+        Pet source = hit.source();
+        if (source == null) {
+          continue;
+        }
+        System.out.println("  - " + source.getName() + " (" + source.getBreed() + ")");
       }
 
     } finally {
@@ -125,19 +126,21 @@ public class PetClinicDemo {
                                               org.opensearch.client.opensearch._types.SortOrder
                                                   .Desc))));
 
-      SearchResponse<Map> firstPage = client.search(searchRequest, Map.class);
+      SearchResponse<Appointment> firstPage = client.search(searchRequest, Appointment.class);
       System.out.println(
           "First page - " + firstPage.hits().hits().size() + " completed appointments:");
 
-      for (Hit<Map> hit : firstPage.hits().hits()) {
-        @SuppressWarnings("unchecked")
-        Map<String, Object> source = (Map<String, Object>) hit.source();
+      for (Hit<Appointment> hit : firstPage.hits().hits()) {
+        Appointment source = hit.source();
         System.out.println(
-            "  - " + source.get("appointment_type") + " with " + source.get("veterinarian"));
+            "  - "
+                + Objects.requireNonNull(source).getAppointmentType()
+                + " with "
+                + source.getVeterinarian());
       }
 
       if (!firstPage.hits().hits().isEmpty()) {
-        var lastSort = firstPage.hits().hits().get(firstPage.hits().hits().size() - 1).sort();
+        var lastSort = firstPage.hits().hits().getLast().sort();
 
         SearchRequest nextPageRequest =
             SearchRequest.of(
@@ -156,15 +159,17 @@ public class PetClinicDemo {
                                                     .Desc)))
                         .searchAfter(lastSort));
 
-        SearchResponse<Map> secondPage = client.search(nextPageRequest, Map.class);
+        SearchResponse<Appointment> secondPage = client.search(nextPageRequest, Appointment.class);
         System.out.println(
             "Second page - " + secondPage.hits().hits().size() + " completed appointments:");
 
-        for (Hit<Map> hit : secondPage.hits().hits()) {
-          @SuppressWarnings("unchecked")
-          Map<String, Object> source = (Map<String, Object>) hit.source();
+        for (Hit<Appointment> hit : secondPage.hits().hits()) {
+          Appointment source = hit.source();
           System.out.println(
-              "  - " + source.get("appointment_type") + " with " + source.get("veterinarian"));
+              "  - "
+                  + Objects.requireNonNull(source).getAppointmentType()
+                  + " with "
+                  + source.getVeterinarian());
         }
       }
 
@@ -213,7 +218,9 @@ public class PetClinicDemo {
 
       SearchResponse<Map> searchResponse = client.search(searchRequest, Map.class);
       System.out.println(
-          "Multi-index search results (" + searchResponse.hits().total().value() + " total):");
+          "Multi-index search results ("
+              + Objects.requireNonNull(searchResponse.hits().total()).value()
+              + " total):");
 
       for (Hit<Map> hit : searchResponse.hits().hits()) {
         @SuppressWarnings("unchecked")

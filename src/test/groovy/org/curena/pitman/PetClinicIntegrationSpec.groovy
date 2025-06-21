@@ -14,7 +14,6 @@ import org.opensearch.client.opensearch.core.search.Hit
 import org.opensearch.client.opensearch.core.search.Pit
 import org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBuilder
 import org.opensearch.testcontainers.OpensearchContainer
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
@@ -30,7 +29,7 @@ import java.time.Duration
 class PetClinicIntegrationSpec extends Specification {
 
     @Shared
-    OpensearchContainer<?> opensearchContainer = new OpensearchContainer<>("opensearchproject/opensearch:2")
+    OpensearchContainer opensearchContainer = new OpensearchContainer<>("opensearchproject/opensearch:2")
             .withExposedPorts(9200)
             .withEnv("discovery.type", "single-node")
             .withEnv("DISABLE_SECURITY_PLUGIN", "true")

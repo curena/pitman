@@ -12,7 +12,6 @@ import org.opensearch.client.opensearch.core.DeletePitRequest;
 import org.opensearch.client.opensearch.core.search.Pit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
@@ -26,7 +25,6 @@ public class DefaultPitManager implements PitManager {
 
   private final OpenSearchClient client;
 
-  @Autowired
   public DefaultPitManager(OpenSearchClient client) {
     this.client = client;
   }
