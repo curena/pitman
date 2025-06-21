@@ -1,23 +1,23 @@
 package org.curena.pitman
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import org.apache.hc.core5.http.HttpHost
 import org.curena.pitman.testdata.PetClinicIndexSetup
+import org.opensearch.client.json.jackson.JacksonJsonpMapper
 import org.opensearch.client.opensearch.OpenSearchClient
-import org.opensearch.client.opensearch._types.Time
 import org.opensearch.client.opensearch._types.FieldValue
-import org.opensearch.client.opensearch.core.CreatePitRequest
-import org.opensearch.client.opensearch.core.CreatePitResponse
-import org.opensearch.client.opensearch.core.DeletePitRequest
-import org.opensearch.client.opensearch.core.SearchRequest
-import org.opensearch.client.opensearch.core.SearchResponse
+import org.opensearch.client.opensearch._types.SortOrder
+import org.opensearch.client.opensearch._types.Time
+import org.opensearch.client.opensearch.core.*
 import org.opensearch.client.opensearch.core.search.Hit
 import org.opensearch.client.opensearch.core.search.Pit
-import org.opensearch.client.json.jackson.JacksonJsonpMapper
 import org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBuilder
+import org.opensearch.testcontainers.OpensearchContainer
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
-import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.spock.Testcontainers
 import spock.lang.Shared
@@ -30,7 +30,7 @@ import java.time.Duration
 class PetClinicIntegrationSpec extends Specification {
 
     @Shared
-    static GenericContainer opensearchContainer = new GenericContainer<>("opensearchproject/opensearch:2.17.1")
+    OpensearchContainer<?> opensearchContainer = new OpensearchContainer<>("opensearchproject/opensearch:2")
             .withExposedPorts(9200)
             .withEnv("discovery.type", "single-node")
             .withEnv("DISABLE_SECURITY_PLUGIN", "true")
@@ -47,13 +47,17 @@ class PetClinicIntegrationSpec extends Specification {
     static void configureProperties(DynamicPropertyRegistry registry) {
         registry.add("opensearch.host") { -> "localhost" }
         registry.add("opensearch.port") { -> opensearchContainer.getMappedPort(9200) }
+        registry.add("opensearch.scheme") { -> "http" }
     }
 
     def setupSpec() {
+        def objectMapper = new ObjectMapper()
+        objectMapper.registerModule(new JavaTimeModule())
+
         def transport = ApacheHttpClient5TransportBuilder.builder(
                 HttpHost.create("http://localhost:${opensearchContainer.getMappedPort(9200)}")
-        ).build()
-        
+        ).setMapper(new JacksonJsonpMapper(objectMapper)).build()
+
         client = new OpenSearchClient(transport)
         indexSetup = new PetClinicIndexSetup(client)
         
@@ -63,7 +67,6 @@ class PetClinicIntegrationSpec extends Specification {
     }
 
     def cleanupSpec() {
-        indexSetup?.deleteAllIndices()
         client?._transport()?.close()
     }
 
@@ -73,7 +76,7 @@ class PetClinicIntegrationSpec extends Specification {
                 .index(PetClinicIndexSetup.PETS_INDEX)
                 .keepAlive(Time.of(t -> t.time("1m")))
         )
-        org.opensearch.client.opensearch.core.CreatePitResponse pitResponse = client.createPit(pitRequest)
+        CreatePitResponse pitResponse = client.createPit(pitRequest)
         String pitId = pitResponse.pitId()
 
         when: "searching with PIT for dogs"
@@ -130,7 +133,7 @@ class PetClinicIntegrationSpec extends Specification {
         SearchRequest initialSearch = SearchRequest.of(s -> s
                 .pit(Pit.of(p -> p.id(pitId).keepAlive("2m")))
                 .query(q -> q.term(t -> t.field("status").value(FieldValue.of("Completed"))))
-                .sort(sort -> sort.field(f -> f.field("scheduled_time").order(org.opensearch.client.opensearch._types.SortOrder.Desc)))
+                .sort(sort -> sort.field(f -> f.field("scheduled_time").order(SortOrder.Desc)))
                 .size(5)
         )
         SearchResponse<Map> initialResponse = client.search(initialSearch, Map.class)
@@ -140,7 +143,7 @@ class PetClinicIntegrationSpec extends Specification {
         SearchRequest followUpSearch = SearchRequest.of(s -> s
                 .pit(Pit.of(p -> p.id(pitId).keepAlive("2m")))
                 .query(q -> q.term(t -> t.field("status").value(FieldValue.of("Completed"))))
-                .sort(sort -> sort.field(f -> f.field("scheduled_time").order(org.opensearch.client.opensearch._types.SortOrder.Desc)))
+                .sort(sort -> sort.field(f -> f.field("scheduled_time").order(SortOrder.Desc)))
                 .size(5)
                 .searchAfter(initialResponse.hits().hits().last().sort())
         )

@@ -4,6 +4,7 @@ plugins {
     groovy
     id("org.springframework.boot") version "3.5.2"
     id("io.spring.dependency-management") version "1.1.7"
+    id("com.diffplug.spotless") version "7.0.4"
 }
 
 group = "org.curena"
@@ -34,7 +35,7 @@ dependencies {
     api("org.opensearch.client:spring-data-opensearch:1.8.0") {
         exclude(group = "org.opensearch.client", module = "opensearch-rest-high-level-client")
     }
-    
+
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-autoconfigure")
     implementation("org.springframework:spring-context")
@@ -59,8 +60,24 @@ dependencies {
     testImplementation("org.apache.groovy:groovy-all:4.0.23")
     testImplementation("net.bytebuddy:byte-buddy:1.15.10")
     testImplementation("org.objenesis:objenesis:3.4")
-    
+
     testRuntimeOnly("ch.qos.logback:logback-classic")
+}
+
+spotless {
+    java {
+        googleJavaFormat()
+        removeUnusedImports()
+        importOrder("java", "javax", "org", "com", "")
+        endWithNewline()
+        trimTrailingWhitespace()
+    }
+
+    kotlin {
+        ktlint()
+        endWithNewline()
+        trimTrailingWhitespace()
+    }
 }
 
 tasks.withType<Test> {
@@ -84,26 +101,26 @@ publishing {
     publications {
         create<MavenPublication>("maven") {
             from(components["java"])
-            
+
             pom {
                 name = "Pitman"
                 description = "A Java library for managing OpenSearch Point-in-Time contexts"
                 url = "https://github.com/curena/pitman"
-                
+
                 licenses {
                     license {
                         name = "MIT License"
                         url = "https://opensource.org/licenses/MIT"
                     }
                 }
-                
+
                 developers {
                     developer {
                         id = "curena"
                         name = "Cecil Ureña"
                     }
                 }
-                
+
                 scm {
                     connection = "scm:git:git://github.com/curena/pitman.git"
                     developerConnection = "scm:git:ssh://github.com:curena/pitman.git"
