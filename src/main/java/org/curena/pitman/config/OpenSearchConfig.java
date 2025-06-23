@@ -19,13 +19,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @Configuration
 public class OpenSearchConfig {
 
-  @Value("${opensearch.host:localhost}")
+  @Value("${opensearch.host}")
   private String host;
 
-  @Value("${opensearch.port:9200}")
+  @Value("${opensearch.port}")
   private int port;
 
-  @Value("${opensearch.scheme:http}")
+  @Value("${opensearch.scheme}")
   private String scheme;
 
   /**
@@ -43,7 +43,7 @@ public class OpenSearchConfig {
               .setMapper(new JacksonJsonpMapper(objectMapper))
               .build());
     } catch (URISyntaxException e) {
-      throw new RuntimeException("Error creating OpenSearchClient: " + e.getMessage(), e);
+      throw new RuntimeException("Error creating OpenSearchClient: ", e);
     }
   }
 }

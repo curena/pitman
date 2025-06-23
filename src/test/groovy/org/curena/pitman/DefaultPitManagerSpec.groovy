@@ -165,16 +165,19 @@ class DefaultPitManagerSpec extends Specification {
     }
 
     def "listAllPits should not throw an exception"() {
-        given: "a mock client that returns a response with a non-null list"
-        def expectedResponse = GetAllPitsResponse.builder().pits(Mock(PitDetail), Mock(PitDetail)).build()
+        given: "a mock client that returns a response with a list of PitDetails"
+        def pitDetail1 = Mock(PitDetail)
+        def pitDetail2 = Mock(PitDetail)
+        def pitsList = [pitDetail1, pitDetail2]
+        def expectedResponse = GetAllPitsResponse.builder().build()
+        expectedResponse.pits() >> pitsList
 
         when: "listing all PITs"
-        1 * client.getAllPits(_ as GetAllPitsRequest) >> expectedResponse
+        client.getAllPits(_ as GetAllPitsRequest) >> expectedResponse
         def result = pitManager.listAllPits()
 
-        then:
-        result != null
-        result.size() == 2
+        then: "the result should be the list of PitDetails"
+        result == pitsList
     }
 
     def "listAllPits should handle IOException and rethrow it"() {

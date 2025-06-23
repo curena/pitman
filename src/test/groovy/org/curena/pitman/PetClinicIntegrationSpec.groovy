@@ -8,10 +8,9 @@ import org.opensearch.client.json.jackson.JacksonJsonpMapper
 import org.opensearch.client.opensearch.OpenSearchClient
 import org.opensearch.client.opensearch._types.FieldValue
 import org.opensearch.client.opensearch._types.SortOrder
-import org.opensearch.client.opensearch._types.Time
-import org.opensearch.client.opensearch.core.*
+import org.opensearch.client.opensearch.core.SearchRequest
+import org.opensearch.client.opensearch.core.SearchResponse
 import org.opensearch.client.opensearch.core.search.Hit
-import org.opensearch.client.opensearch.core.search.Pit
 import org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBuilder
 import org.opensearch.testcontainers.OpensearchContainer
 import org.springframework.boot.test.context.SpringBootTest
@@ -40,6 +39,9 @@ class PetClinicIntegrationSpec extends Specification {
     OpenSearchClient client
 
     @Shared
+    PitManager pitManager
+
+    @Shared
     PetClinicIndexSetup indexSetup
 
     @DynamicPropertySource
@@ -58,8 +60,9 @@ class PetClinicIntegrationSpec extends Specification {
         ).setMapper(new JacksonJsonpMapper(objectMapper)).build()
 
         client = new OpenSearchClient(transport)
+        pitManager = new DefaultPitManager(client)
         indexSetup = new PetClinicIndexSetup(client)
-        
+
         indexSetup.setupAllIndices()
         indexSetup.populateWithTestData()
         indexSetup.refreshAllIndices()
@@ -71,16 +74,11 @@ class PetClinicIntegrationSpec extends Specification {
 
     def "should create and use Point-in-Time for pet clinic data"() {
         given: "a PIT is created for the pets index"
-        CreatePitRequest pitRequest = CreatePitRequest.of(p -> p
-                .index(PetClinicIndexSetup.PETS_INDEX)
-                .keepAlive(Time.of(t -> t.time("1m")))
-        )
-        CreatePitResponse pitResponse = client.createPit(pitRequest)
-        String pitId = pitResponse.pitId()
+        String pitId = pitManager.createPit(PetClinicIndexSetup.PETS_INDEX, "1m")
 
         when: "searching with PIT for dogs"
         SearchRequest searchRequest = SearchRequest.of(s -> s
-                .pit(Pit.of(p -> p.id(pitId).keepAlive("1m")))
+                .pit(pitManager.createPitForSearch(pitId, "1m"))
                 .query(q -> q.term(t -> t.field("species").value(FieldValue.of("Dog"))))
                 .size(20)
         )
@@ -97,7 +95,7 @@ class PetClinicIntegrationSpec extends Specification {
 
         when: "searching for a specific breed with PIT"
         SearchRequest breedSearchRequest = SearchRequest.of(s -> s
-                .pit(Pit.of(p -> p.id(pitId).keepAlive("1m")))
+                .pit(pitManager.createPitForSearch(pitId, "1m"))
                 .query(q -> q.bool(b -> b
                         .must(m -> m.term(t -> t.field("species").value(FieldValue.of("Dog"))))
                         .must(m -> m.term(t -> t.field("breed").value(FieldValue.of("Golden Retriever"))))
@@ -114,23 +112,17 @@ class PetClinicIntegrationSpec extends Specification {
 
         cleanup: "delete the PIT"
         if (pitId) {
-            DeletePitRequest deletePitRequest = DeletePitRequest.of(d -> d.pitId(pitId))
-            client.deletePit(deletePitRequest)
+            pitManager.deletePit(pitId)
         }
     }
 
     def "should demonstrate PIT consistency across multiple searches"() {
         given: "a PIT is created for appointments index"
-        CreatePitRequest pitRequest = CreatePitRequest.of(p -> p
-                .index(PetClinicIndexSetup.APPOINTMENTS_INDEX)
-                .keepAlive(Time.of(t -> t.time("2m")))
-        )
-        CreatePitResponse pitResponse = client.createPit(pitRequest)
-        String pitId = pitResponse.pitId()
+        String pitId = pitManager.createPit(PetClinicIndexSetup.APPOINTMENTS_INDEX, "2m")
 
         when: "performing initial search for completed appointments"
         SearchRequest initialSearch = SearchRequest.of(s -> s
-                .pit(Pit.of(p -> p.id(pitId).keepAlive("2m")))
+                .pit(pitManager.createPitForSearch(pitId, "2m"))
                 .query(q -> q.term(t -> t.field("status").value(FieldValue.of("Completed"))))
                 .sort(sort -> sort.field(f -> f.field("scheduled_time").order(SortOrder.Desc)))
                 .size(5)
@@ -140,7 +132,7 @@ class PetClinicIntegrationSpec extends Specification {
 
         and: "performing follow-up search with same PIT"
         SearchRequest followUpSearch = SearchRequest.of(s -> s
-                .pit(Pit.of(p -> p.id(pitId).keepAlive("2m")))
+                .pit(pitManager.createPitForSearch(pitId, "2m"))
                 .query(q -> q.term(t -> t.field("status").value(FieldValue.of("Completed"))))
                 .sort(sort -> sort.field(f -> f.field("scheduled_time").order(SortOrder.Desc)))
                 .size(5)
@@ -161,23 +153,17 @@ class PetClinicIntegrationSpec extends Specification {
 
         cleanup: "delete the PIT"
         if (pitId) {
-            DeletePitRequest deletePitRequest = DeletePitRequest.of(d -> d.pitId(pitId))
-            client.deletePit(deletePitRequest)
+            pitManager.deletePit(pitId)
         }
     }
 
     def "should search across multiple indices with PIT"() {
         given: "a PIT is created for multiple indices"
-        CreatePitRequest pitRequest = CreatePitRequest.of(p -> p
-                .index(PetClinicIndexSetup.OWNERS_INDEX, PetClinicIndexSetup.PETS_INDEX)
-                .keepAlive(Time.of(t -> t.time("1m")))
-        )
-        CreatePitResponse pitResponse = client.createPit(pitRequest)
-        String pitId = pitResponse.pitId()
+        String pitId = pitManager.createPit("1m", PetClinicIndexSetup.OWNERS_INDEX, PetClinicIndexSetup.PETS_INDEX)
 
         when: "searching for documents containing 'Smith'"
         SearchRequest searchRequest = SearchRequest.of(s -> s
-                .pit(Pit.of(p -> p.id(pitId).keepAlive("1m")))
+                .pit(pitManager.createPitForSearch(pitId, "1m"))
                 .query(q -> q.multiMatch(m -> m
                         .query("Smith")
                         .fields("first_name", "last_name", "name")
@@ -192,15 +178,14 @@ class PetClinicIntegrationSpec extends Specification {
 
         cleanup: "delete the PIT"
         if (pitId) {
-            DeletePitRequest deletePitRequest = DeletePitRequest.of(d -> d.pitId(pitId))
-            client.deletePit(deletePitRequest)
+            pitManager.deletePit(pitId)
         }
     }
 
     def "should handle PIT errors gracefully"() {
         when: "attempting to search with invalid PIT ID"
         SearchRequest searchRequest = SearchRequest.of(s -> s
-                .pit(Pit.of(p -> p.id("invalid-pit-id").keepAlive("1m")))
+                .pit(pitManager.createPitForSearch("invalid-pit-id", "1m"))
                 .query(q -> q.matchAll(m -> m))
                 .size(1)
         )
