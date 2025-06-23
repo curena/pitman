@@ -1,3 +1,5 @@
+import org.jreleaser.model.Active
+
 plugins {
     `java-library`
     `maven-publish`
@@ -5,10 +7,12 @@ plugins {
     id("org.springframework.boot") version "3.5.2"
     id("io.spring.dependency-management") version "1.1.7"
     id("com.diffplug.spotless") version "7.0.4"
+    id("org.jreleaser") version "1.17.0"
+
 }
 
 group = "org.curena"
-version = "0.1.0-SNAPSHOT"
+version = "1.0.0"
 
 java {
     toolchain {
@@ -20,6 +24,7 @@ java {
 }
 
 repositories {
+    mavenLocal()
     mavenCentral()
 }
 
@@ -101,7 +106,8 @@ publishing {
     publications {
         create<MavenPublication>("maven") {
             from(components["java"])
-
+            groupId = project.group.toString()
+            artifactId = "pitman"
             pom {
                 name = "Pitman"
                 description = "A Java library for managing OpenSearch Point-in-Time contexts"
@@ -118,7 +124,14 @@ publishing {
                     developer {
                         id = "curena"
                         name = "Cecil Ureña"
+                        email = "curena@hey.com"
+                        url = "https://curena.dev"
                     }
+                }
+
+                issueManagement {
+                    system = "GitHub"
+                    url = "https://github.com/curena/pitman/issues"
                 }
 
                 scm {
@@ -126,6 +139,67 @@ publishing {
                     developerConnection = "scm:git:ssh://github.com:curena/pitman.git"
                     url = "https://github.com/curena/pitman/tree/main"
                 }
+                /*
+                 * <server>
+	<id>${server}</id>
+	<username>O6+dHWYR</username>
+	<password>TWWc5OstNt7U25ZTNGFDzq35dXVL3HyW772wnjZvfsU/</password>
+</server>
+
+                 */
+                scm {
+                    connection = "scm:git:git://github.com/curena/pitman.git"
+                    developerConnection = "scm:git:ssh://github.com:curena/pitman.git"
+                    url = "https://github.com/curena/pitman/tree/main"
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = "Sonatype"
+            url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
+            credentials {
+                username = properties["centralPortalUsername"].toString()
+                password = properties["centralPortalPassword"].toString()
+            }
+        }
+    }
+}
+
+jreleaser {
+    project {
+        inceptionYear = "2025"
+        author("@curena")
+    }
+    release {
+        github {
+            sign = true
+            branch = "main"
+            branchPush = "main"
+            overwrite = true
+        }
+    }
+
+    signing {
+        active = Active.ALWAYS
+        armored = true
+        verify = true
+        publicKey = providers.environmentVariable("JRELEASER_GPG_PUBLIC_KEY").orElse("")
+        secretKey = providers.environmentVariable("JRELEASER_GPG_SECRET_KEY").orElse("")
+        passphrase = providers.environmentVariable("JRELEASER_GPG_PASSPHRASE").orElse("")
+    }
+
+    deploy {
+        maven {
+            mavenCentral.create("sonatype") {
+                active = Active.ALWAYS
+                url = "https://central.sonatype.com/api/v1/publisher"
+                username = providers.environmentVariable("JRELEASER_MAVENCENTRAL_USERNAME").orElse("")
+                password = providers.environmentVariable("JRELEASER_MAVENCENTRAL_TOKEN").orElse("")
+                stagingRepository(layout.buildDirectory.dir("staging-deploy").get().toString())
+                setAuthorization("Basic")
+                retryDelay = 60
             }
         }
     }
