@@ -4,14 +4,14 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.Time;
 import org.opensearch.client.opensearch.core.CreatePitRequest;
 import org.opensearch.client.opensearch.core.CreatePitResponse;
 import org.opensearch.client.opensearch.core.DeletePitRequest;
 import org.opensearch.client.opensearch.core.search.Pit;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -19,19 +19,15 @@ import org.springframework.stereotype.Service;
  * contexts.
  */
 @Service
+@Slf4j
+@RequiredArgsConstructor
 public class DefaultPitManager implements PitManager {
-
-  private static final Logger logger = LoggerFactory.getLogger(DefaultPitManager.class);
 
   private final OpenSearchClient client;
 
-  public DefaultPitManager(OpenSearchClient client) {
-    this.client = client;
-  }
-
   @Override
   public String createPit(List<String> indices, Time keepAlive) throws IOException {
-    logger.debug("Creating PIT for indices {} with keepAlive {}", indices, keepAlive);
+    log.debug("Creating PIT for indices {} with keepAlive {}", indices, keepAlive);
 
     CreatePitRequest.Builder builder = new CreatePitRequest.Builder();
     builder.keepAlive(keepAlive);
@@ -42,7 +38,7 @@ public class DefaultPitManager implements PitManager {
     CreatePitResponse response = client.createPit(builder.build());
     String pitId = response.pitId();
 
-    logger.debug("Created PIT with ID: {}", pitId);
+    log.debug("Created PIT with ID: {}", pitId);
     return pitId;
   }
 
@@ -62,21 +58,31 @@ public class DefaultPitManager implements PitManager {
   }
 
   @Override
+  public String createPit(Time keepAlive, String... indices) throws IOException {
+    return createPit(List.of(indices), keepAlive);
+  }
+
+  @Override
+  public String createPit(String keepAlive, String... indices) throws IOException {
+    return createPit(List.of(indices), keepAlive);
+  }
+
+  @Override
   public Pit createPitForSearch(String pitId, String keepAlive) {
-    logger.debug(
+    log.debug(
         "Creating Pit object for search with PIT ID: {} and keepAlive: {}", pitId, keepAlive);
     return Pit.of(p -> p.id(pitId).keepAlive(keepAlive));
   }
 
   @Override
   public boolean deletePit(String pitId) throws IOException {
-    logger.debug("Deleting PIT with ID: {}", pitId);
+    log.debug("Deleting PIT with ID: {}", pitId);
 
     DeletePitRequest request = DeletePitRequest.of(d -> d.pitId(pitId));
     client.deletePit(request);
 
     // Assuming deletion was successful if no exception was thrown
-    logger.debug("PIT deletion completed: {}", pitId);
+    log.debug("PIT deletion completed: {}", pitId);
 
     return true;
   }

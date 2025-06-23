@@ -53,6 +53,26 @@ public interface PitManager {
   String createPit(String index, String keepAlive) throws IOException;
 
   /**
+   * Creates a new PIT context for the specified indices using varargs.
+   *
+   * @param keepAlive The keep-alive time for the PIT
+   * @param indices The indices to create a PIT for as varargs
+   * @return The PIT ID
+   * @throws IOException If an error occurs during PIT creation
+   */
+  String createPit(Time keepAlive, String... indices) throws IOException;
+
+  /**
+   * Creates a new PIT context for the specified indices using varargs.
+   *
+   * @param keepAlive The keep-alive time for the PIT as a string (e.g., "1m", "5h")
+   * @param indices The indices to create a PIT for as varargs
+   * @return The PIT ID
+   * @throws IOException If an error occurs during PIT creation
+   */
+  String createPit(String keepAlive, String... indices) throws IOException;
+
+  /**
    * Creates a Pit object for use in search requests.
    *
    * @param pitId The PIT ID

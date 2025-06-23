@@ -8,8 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 /**
- * Configuration class for Jackson ObjectMapper. Provides a properly configured ObjectMapper bean
- * that can handle Java 8 date/time types.
+ * Configuration class for Jackson ObjectMapper.
+ * Provides a properly configured ObjectMapper bean that can handle Java 8 date/time types.
  */
 @Configuration
 public class JacksonConfig {
