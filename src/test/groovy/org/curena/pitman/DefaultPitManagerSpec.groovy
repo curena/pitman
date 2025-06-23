@@ -5,11 +5,8 @@ import org.opensearch.client.opensearch._types.Time
 import org.opensearch.client.opensearch.core.CreatePitRequest
 import org.opensearch.client.opensearch.core.CreatePitResponse
 import org.opensearch.client.opensearch.core.DeletePitRequest
-import org.opensearch.client.opensearch.core.search.Pit
 import spock.lang.Specification
 import spock.lang.Subject
-
-import java.util.function.Function
 
 class DefaultPitManagerSpec extends Specification {
 

@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.Time;
 import org.opensearch.client.opensearch.core.CreatePitRequest;
@@ -13,6 +11,9 @@ import org.opensearch.client.opensearch.core.CreatePitResponse;
 import org.opensearch.client.opensearch.core.DeletePitRequest;
 import org.opensearch.client.opensearch.core.search.Pit;
 import org.springframework.stereotype.Service;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Default implementation of the PitManager interface. Uses the OpenSearch client to manage PIT
@@ -69,8 +70,7 @@ public class DefaultPitManager implements PitManager {
 
   @Override
   public Pit createPitForSearch(String pitId, String keepAlive) {
-    log.debug(
-        "Creating Pit object for search with PIT ID: {} and keepAlive: {}", pitId, keepAlive);
+    log.debug("Creating Pit object for search with PIT ID: {} and keepAlive: {}", pitId, keepAlive);
     return Pit.of(p -> p.id(pitId).keepAlive(keepAlive));
   }
 
