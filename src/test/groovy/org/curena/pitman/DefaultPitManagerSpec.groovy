@@ -5,6 +5,9 @@ import org.opensearch.client.opensearch._types.Time
 import org.opensearch.client.opensearch.core.CreatePitRequest
 import org.opensearch.client.opensearch.core.CreatePitResponse
 import org.opensearch.client.opensearch.core.DeletePitRequest
+import org.opensearch.client.opensearch.core.GetAllPitsRequest
+import org.opensearch.client.opensearch.core.GetAllPitsResponse
+import org.opensearch.client.opensearch.core.pit.PitDetail
 import spock.lang.Specification
 import spock.lang.Subject
 
@@ -156,6 +159,33 @@ class DefaultPitManagerSpec extends Specification {
 
         then: "the client should be called and throw an exception"
         1 * client.deletePit(_) >> { throw ioException }
+
+        and: "the exception should be rethrown"
+        thrown(IOException)
+    }
+
+    def "listAllPits should not throw an exception"() {
+        given: "a mock client that returns a response with a non-null list"
+        def expectedResponse = GetAllPitsResponse.builder().pits(Mock(PitDetail), Mock(PitDetail)).build()
+
+        when: "listing all PITs"
+        1 * client.getAllPits(_ as GetAllPitsRequest) >> expectedResponse
+        def result = pitManager.listAllPits()
+
+        then:
+        result != null
+        result.size() == 2
+    }
+
+    def "listAllPits should handle IOException and rethrow it"() {
+        given: "an IOException"
+        def ioException = new IOException("Test exception")
+
+        when: "listing all PITs that throws an exception"
+        pitManager.listAllPits()
+
+        then: "the client should be called and throw an exception"
+        1 * client.getAllPits(_) >> { throw ioException }
 
         and: "the exception should be rethrown"
         thrown(IOException)

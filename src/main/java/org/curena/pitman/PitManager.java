@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.List;
 
 import org.opensearch.client.opensearch._types.Time;
+import org.opensearch.client.opensearch.core.pit.PitDetail;
 import org.opensearch.client.opensearch.core.search.Pit;
 
 /**
@@ -11,6 +12,7 @@ import org.opensearch.client.opensearch.core.search.Pit;
  * using, and cleaning up PIT contexts.
  */
 public interface PitManager {
+  List<PitDetail> listAllPits() throws IOException;
 
   /**
    * Creates a new PIT context for the specified indices.

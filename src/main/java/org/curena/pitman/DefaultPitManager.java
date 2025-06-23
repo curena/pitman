@@ -6,9 +6,8 @@ import java.util.List;
 
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.Time;
-import org.opensearch.client.opensearch.core.CreatePitRequest;
-import org.opensearch.client.opensearch.core.CreatePitResponse;
-import org.opensearch.client.opensearch.core.DeletePitRequest;
+import org.opensearch.client.opensearch.core.*;
+import org.opensearch.client.opensearch.core.pit.PitDetail;
 import org.opensearch.client.opensearch.core.search.Pit;
 import org.springframework.stereotype.Service;
 
@@ -25,6 +24,13 @@ import lombok.extern.slf4j.Slf4j;
 public class DefaultPitManager implements PitManager {
 
   private final OpenSearchClient client;
+
+  @Override
+  public List<PitDetail> listAllPits() throws IOException {
+    GetAllPitsRequest request = GetAllPitsRequest.builder().build();
+    GetAllPitsResponse response = client.getAllPits(request);
+    return response.pits();
+  }
 
   @Override
   public String createPit(List<String> indices, Time keepAlive) throws IOException {
